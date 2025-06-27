@@ -1,0 +1,28 @@
+#Generate Log Power Shell Script
+#THis will run 50 times every 5 seconds to generate sample logs
+
+ $Counters = @(
+  '\Processor(_Total)\% Processor Time',
+  '\Processor(_Total)\% Privileged Time',
+  '\System\Processor Queue Length',
+  '\Memory\Pages/sec',
+  '\Memory\Committed Bytes',
+  '\PhysicalDisk(_Total)\Avg. Disk Queue Length',
+  '\LogicalDisk(_Total)\% Free Space',
+  '\Network Interface(*)\Bytes Total/sec'
+)
+
+for ($i = 1; $i -le 50; $i++) {
+    $Sample = Get-Counter -Counter $Counters
+    $Data = [PSCustomObject]@{
+        Timestamp = Get-Date -Format "MM/dd/yyyy HH:mm:ss" # Explicitly format the timestamp
+    }
+
+    foreach ($counter in $Sample.CounterSamples) {
+        $name = ($counter.Path -replace '^.*\\', '') -replace '[^a-zA-Z0-9 %]', '_'
+        $Data | Add-Member -NotePropertyName $name -NotePropertyValue $counter.CookedValue
+    }
+
+    $Data | Export-Csv "C:\AI_Project\logs\system_metrics.csv" -Append -NoTypeInformation
+    Start-Sleep -Seconds 5
+}

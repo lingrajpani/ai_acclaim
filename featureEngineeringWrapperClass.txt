@@ -1,0 +1,36 @@
+import os
+import sys
+import pandas as pd
+
+# Step 1: Add your module path so we can import custom code
+sys.path.append('/content/drive/MyDrive/predictive_maintenance/src')
+
+# Step 2: Import the master builder
+from feature_engineering import build_features_with_labels
+
+# Step 3: Paths
+base_dir = '/content/drive/MyDrive/predictive_maintenance/data'
+processed_dir = os.path.join(base_dir, 'processed_logs')
+os.makedirs(processed_dir, exist_ok=True)
+
+combined_path = os.path.join(processed_dir, 'combined_logs_data.json')
+output_path = os.path.join(processed_dir, 'engineered_features.json')
+
+# Step 4: Load and prepare combined logs
+df = pd.read_json(combined_path)
+df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
+df = df.sort_values('Timestamp')
+
+# Step 5: Generate metric-based features
+metric_cols = ['CPU_Usage', 'Memory_Usage']  # Adjust based on your column names
+metrics_df = build_features(df, metrics_cols=metric_cols)
+
+event_df = df[['Timestamp', 'EntryType']].dropna() if 'EntryType' in df.columns else pd.DataFrame()
+event_features_df = add_event_counts(event_df, event_type_col='EntryType', window='10min')
+
+# Step 7: Merge both
+final_df = merge_event_features(metrics_df, event_features_df)
+
+# Step 8: Save to JSON
+final_df.to_json(output_path, orient='records', indent=4)
+print(f"Engineered features saved to: {output_path}")
